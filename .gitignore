@@ -213,3 +213,5 @@ __marimo__/
 
 .lastfm_cache
 .get_album_cache
+
+.DS_Store

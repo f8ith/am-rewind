@@ -1,9 +1,11 @@
 import argparse
+import datetime
 from pathlib import Path
 import requests
 import os
 import sys
 
+import dateutil.parser
 import pandas as pd
 
 from utils import load_env
@@ -47,11 +49,8 @@ def submit_listen(listen_type, payload, token):
     return response.json()
 
 
-if __name__ == "__main__":
+def submit_payload(args):
     # Parse arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("csv_file", type=Path)
-    args = parser.parse_args()
 
     if not args.csv_file:
         print("invalid file path")
@@ -65,21 +64,26 @@ if __name__ == "__main__":
     df = pd.read_csv(args.csv_file)
     all_payload = [
         {
-            "listened_at": int(x[DATE_COLUMN]),
+            "listened_at": dateutil.parser.parse(date).timestamp(),
             "track_metadata": {
-                "artist_name": x[ARTIST_COLUMN],
-                "track_name": x[SONG_COLUMN],
-                "release_name": x[ALBUM_COLUMN],
+                "artist_name": artist,
+                "track_name": song,
+                "release_name": album,
             },
         }
-        for x in df
+        for date, artist, song, album in zip(
+            df[DATE_COLUMN], df[ARTIST_COLUMN], df[SONG_COLUMN], df[ALBUM_COLUMN]
+        )
     ]
 
     num_chunks = len(df) // 500 + 1
 
     for i in range(num_chunks):
         payload = all_payload[i * 500 : (i + 1) * 500]
-        json_response = submit_listen(
-            listen_type="import", payload=payload, token=token
-        )
-        print("Response was: {0}".format(json_response))
+        if not args.pretend:
+            json_response = submit_listen(
+                listen_type="import", payload=payload, token=token
+            )
+            print(f"chunk {i}: response was: {json_response}")
+        else:
+            print(f"submitted: {payload}")

@@ -7,7 +7,9 @@ import aiohttp
 import pandas as pd
 from colorama import Fore, init
 
-from get_album import CACHE_HIT, parse_unknown_album
+from get_album import CACHE_HIT, get_artist_from_album
+from utils import load_cache
+from throttledclientsession import ThrottledClientSession
 
 CSV_FILE_NAME = "Apple Music Play Activity.csv"
 CONTAINER_FILE_NAME = "Apple Music - Container Details.csv"
@@ -20,8 +22,12 @@ ALL_COLUMNS = [v for k, v in list(locals().items()) if k.endswith("_COLUMN")]
 
 # Hyper-parameters
 INSUFFICIENT_DURATION_MILLIS = 15000
+MAX_DURATION_MILLIS = (
+    1800000  # clip durations longer than 30 mins (customize to liking)
+)
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f%z"
-START_DATE = datetime.datetime(1990, 1, 1, 0, 0, 0).astimezone(datetime.timezone.utc)
+START_DATE = datetime.datetime(2016, 1, 1, 0, 0, 0).astimezone(datetime.timezone.utc)
+RATE_LIMIT = 0.3  # equivalent to 18 req/minute
 
 ARTIST_COLUMN = "Artist"
 
@@ -30,7 +36,7 @@ cache_hits = 0
 cache_misses = 0
 
 
-async def get_artist(session: aiohttp.ClientSession, album: str) -> str:
+async def get_artist(session: aiohttp.ClientSession, cache: dict, album: str) -> str:
     """
     Returns the artist for a given album, based on a partial match in CONTAINER_FILE_NAME
     """
@@ -41,7 +47,7 @@ async def get_artist(session: aiohttp.ClientSession, album: str) -> str:
     df = df[df["Container Description"].str.contains(album, regex=False)]
 
     if len(df) == 0:
-        artist, cache_status = await parse_unknown_album(session, album)
+        artist, cache_status = await get_artist_from_album(session, cache, album)
 
         if cache_status == CACHE_HIT:
             cache_hits += 1
@@ -66,13 +72,11 @@ def pprint_artists(artists: tuple) -> str:
     return ", ".join(artists)
 
 
-async def main():
+async def parse_activity(args):
+    """
+    Parses Apple Music Play Activity.csv
+    """
     warnings.filterwarnings("ignore")
-
-    # Parse arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--debug", action="store_true")
-    args = parser.parse_args()
 
     df = pd.read_csv(CSV_FILE_NAME)
 
@@ -87,12 +91,20 @@ async def main():
     df = df[df[DATE_COLUMN] > START_DATE]
 
     # Remove rows where the play duration is less than 10 seconds
-    df = df[df[PLAY_DURATION_COLUMN] > INSUFFICIENT_DURATION_MILLIS]
+    df = df[df[PLAY_DURATION_COLUMN] >= INSUFFICIENT_DURATION_MILLIS]
+
+    df[PLAY_DURATION_COLUMN] = df[PLAY_DURATION_COLUMN].clip(upper=MAX_DURATION_MILLIS)
+
+    cache = load_cache()
 
     # Add in the artist column
-    async with aiohttp.ClientSession() as session:
+    async with ThrottledClientSession(
+        rate_limit=RATE_LIMIT,
+        filters=["http://ws.audioscrobbler.com/2.0"],
+        limit_filtered=False,
+    ) as session:
         df[ARTIST_COLUMN] = await asyncio.gather(
-            *(get_artist(session, v) for v in df[ALBUM_COLUMN])
+            *(get_artist(session, cache, v) for v in df[ALBUM_COLUMN])
         )
 
     print("Songs played: ", len(df))
@@ -116,20 +128,6 @@ async def main():
     print("Top 5 artists by play time:")
     top_artists_df.index += 1
     print(top_artists_df)
-    print()
-
-    # Get Taylor Swift play time
-    y = artist_play_time["Taylor Swift"] / 60000
-    z = total_play_time / 60000
-    k = 0.9
-    # Minutes needed to hit 90% of Taylor Swift play time: (kz - y) / (1 - k)
-
-    minutes_needed = max(0, round((k * z - y) / (1 - k), 1))
-    if minutes_needed == 0:
-        init()
-        print(Fore.GREEN + "90% Taylor Swift minutes achieved!" + Fore.RESET)
-    else:
-        print("Minutes needed to hit 90% of Taylor Swift play time:", minutes_needed)
     print()
 
     # Find the top 5 albums by play time
@@ -170,8 +168,7 @@ async def main():
         print()
         print("Cache hit%:", round(cache_hits / (cache_hits + cache_misses) * 100, 1))
 
-    df.to_csv(f"{datetime.datetime.now().strftime('%A')}-activity.csv", index=True)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    df.to_csv(
+        f"{datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')}-activity.csv",
+        index=True,
+    )

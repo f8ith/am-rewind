@@ -6,7 +6,8 @@ import warnings
 import aiohttp
 import pandas as pd
 
-from get_album import CACHE_HIT, parse_unknown_album
+from get_album import CACHE_HIT, get_artist_from_album
+from utils import load_cache
 
 CSV_FILE_NAME = "Apple Music - Play History Daily Tracks.csv"
 PLAY_DURATION_COLUMN = "Play Duration Milliseconds"
@@ -43,10 +44,10 @@ def get_artist(track: str) -> str:
     return track.split(" - ")[0].strip()
 
 
-async def get_album(session: aiohttp.ClientSession, track: str) -> str:
+async def get_album(session: aiohttp.ClientSession, cache: dict, track: str) -> str:
     global cache_hits, cache_misses
 
-    album, cache_status = await parse_unknown_album(session, track)
+    album, cache_status = await get_artist_from_album(session, cache, track)
 
     if cache_status == CACHE_HIT:
         cache_hits += 1
@@ -56,13 +57,11 @@ async def get_album(session: aiohttp.ClientSession, track: str) -> str:
     return album
 
 
-async def main():
+async def parse_history(args):
+    """
+    Parses Apple Music - Play History Daily Tracks.csv
+    """
     warnings.filterwarnings("ignore")
-
-    # Parse arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--debug", action="store_true")
-    args = parser.parse_args()
 
     df = pd.read_csv(CSV_FILE_NAME)
 
@@ -83,15 +82,16 @@ async def main():
     ARTIST_COLUMN = "Artist"
     df[ARTIST_COLUMN] = df[SONG_COLUMN].apply(get_artist)
 
+    # Remove artist from the track name
+    df[SONG_COLUMN] = df[SONG_COLUMN].apply(get_title)
+
+    cache = load_cache()
     # Add in the album column
     ALBUM_COLUMN = "Album"
     async with aiohttp.ClientSession() as session:
         df[ALBUM_COLUMN] = await asyncio.gather(
-            *(get_album(session, v) for v in df[SONG_COLUMN])
+            *(get_album(session, cache, v) for v in df[SONG_COLUMN])
         )
-
-    # Remove artist from the track name
-    df[SONG_COLUMN] = df[SONG_COLUMN].apply(get_title)
 
     print("Songs played: ", len(df))
     print("Last date: ", df[DATE_COLUMN].max().strftime("%Y-%m-%d"))
@@ -163,7 +163,3 @@ async def main():
         print("Cache hit%:", round(cache_hits / (cache_hits + cache_misses) * 100, 1))
 
     df.to_csv(f"{datetime.datetime.now().strftime('%A')}-history.csv", index=True)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

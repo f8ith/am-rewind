@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "am-listenbrainz"
+name = "am_rewind"
 version = "0.1.0"
 description = ""
 authors = ["faith <jamienibtong@gmail.com>"]
@@ -9,10 +9,12 @@ readme = "README.md"
 python = "^3.12"
 pandas = "^2.3.0"
 requests = "^2.32.4"
-colorama = "^0.4.6"
 aiohttp = "^3.12.13"
-
+python-dateutil = "^2.9.0.post0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+amr = 'am_rewind.cli:main'
