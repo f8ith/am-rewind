@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "am-listenbrainz"
+version = "0.1.0"
+description = ""
+authors = ["faith <jamienibtong@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pandas = "^2.3.0"
+requests = "^2.32.4"
+colorama = "^0.4.6"
+aiohttp = "^3.12.13"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
