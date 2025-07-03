@@ -6,8 +6,8 @@ import warnings
 import aiohttp
 import pandas as pd
 
-from get_album import CACHE_HIT, get_artist_from_album
-from utils import load_cache
+from am_rewind.get_album import CACHE_HIT, get_artist_from_album
+from am_rewind.utils import load_cache
 
 CSV_FILE_NAME = "Apple Music - Play History Daily Tracks.csv"
 PLAY_DURATION_COLUMN = "Play Duration Milliseconds"

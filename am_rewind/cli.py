@@ -1,10 +1,16 @@
 import argparse
 from pathlib import Path
 
-import listenbrainz
-import parse_history
-import parse_activity
-from utils import subcommand, argument, load_cache, CACHE_FILE_NAME, write_cache
+import am_rewind.listenbrainz
+import am_rewind.parse_history
+import am_rewind.parse_activity
+from am_rewind.utils import (
+    subcommand,
+    argument,
+    load_cache,
+    CACHE_FILE_NAME,
+    write_cache,
+)
 
 parser = argparse.ArgumentParser(description="misc functions.")
 subparsers = parser.add_subparsers(dest="subcommand")
@@ -110,8 +116,8 @@ async def print_cache(args):
     write_cache(cache, args.dest)
 
 
-subcommand(subparsers, name="activity")(parse_activity.parse_activity)
-subcommand(subparsers, name="history")(parse_history.parse_history)
+subcommand(subparsers, name="activity")(am_rewind.parse_activity.parse_activity)
+subcommand(subparsers, name="history")(am_rewind.parse_history.parse_history)
 subcommand(
     subparsers,
     name="listenbrainz",
@@ -119,7 +125,7 @@ subcommand(
         argument("csv_file", type=Path),
         argument("--pretend", default=False, action="store_true"),
     ],
-)(listenbrainz.submit_payload)
+)(am_rewind.listenbrainz.submit_payload)
 
 
 def main():

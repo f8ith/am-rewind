@@ -5,11 +5,10 @@ import warnings
 
 import aiohttp
 import pandas as pd
-from colorama import Fore, init
 
-from get_album import CACHE_HIT, get_artist_from_album
-from utils import load_cache
-from throttledclientsession import ThrottledClientSession
+from am_rewind.get_album import CACHE_HIT, get_artist_from_album
+from am_rewind.utils import load_cache
+from am_rewind.throttledclientsession import ThrottledClientSession
 
 CSV_FILE_NAME = "Apple Music Play Activity.csv"
 CONTAINER_FILE_NAME = "Apple Music - Container Details.csv"

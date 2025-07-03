@@ -8,8 +8,13 @@ import sys
 import dateutil.parser
 import pandas as pd
 
-from utils import load_env
-from parse_activity import DATE_COLUMN, ARTIST_COLUMN, SONG_COLUMN, ALBUM_COLUMN
+from am_rewind.utils import load_env
+from am_rewind.parse_activity import (
+    DATE_COLUMN,
+    ARTIST_COLUMN,
+    SONG_COLUMN,
+    ALBUM_COLUMN,
+)
 
 load_env()
 
