@@ -116,8 +116,36 @@ async def print_cache(args):
     write_cache(cache, args.dest)
 
 
-subcommand(subparsers, name="activity")(am_rewind.parse_activity.parse_activity)
-subcommand(subparsers, name="history")(am_rewind.parse_history.parse_history)
+subcommand(
+    subparsers,
+    name="activity",
+    args=[
+        argument(
+            "--tracks_csv",
+            type=Path,
+            default=am_rewind.parse_activity.CSV_FILE_NAME,
+            help="Apple Music Play Activity.csv",
+        ),
+        argument(
+            "--container_csv",
+            type=Path,
+            default=am_rewind.parse_activity.CONTAINER_FILE_NAME,
+            help="Apple Music - Container Details.csv",
+        ),
+    ],
+)(am_rewind.parse_activity.parse_activity)
+subcommand(
+    subparsers,
+    name="history",
+    args=[
+        argument(
+            "--history_csv",
+            type=Path,
+            default=am_rewind.parse_history.CSV_FILE_NAME,
+            help="Apple Music - Play History Daily Tracks.csv",
+        ),
+    ],
+)(am_rewind.parse_history.parse_history)
 subcommand(
     subparsers,
     name="listenbrainz",

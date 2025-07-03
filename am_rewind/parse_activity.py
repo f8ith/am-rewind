@@ -1,9 +1,10 @@
-import argparse
 import asyncio
 import datetime
+import os
 import warnings
 
 import aiohttp
+import dateutil.parser
 import pandas as pd
 
 from am_rewind.get_album import CACHE_HIT, get_artist_from_album
@@ -20,13 +21,22 @@ DATE_COLUMN = "Event End Timestamp"
 ALL_COLUMNS = [v for k, v in list(locals().items()) if k.endswith("_COLUMN")]
 
 # Hyper-parameters
-INSUFFICIENT_DURATION_MILLIS = 15000
-MAX_DURATION_MILLIS = (
-    1800000  # clip durations longer than 30 mins (customize to liking)
+INSUFFICIENT_DURATION_MILLIS = int(
+    os.environ.get("INSUFFICIENT_DURATION_MILLIS", 15000)
+)
+MAX_DURATION_MILLIS = int(
+    os.environ.get(
+        "MAX_DURATION_MILLIS", 1800000
+    )  # clip durations longer than 30 mins (customize to liking)
 )
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f%z"
-START_DATE = datetime.datetime(2016, 1, 1, 0, 0, 0).astimezone(datetime.timezone.utc)
-RATE_LIMIT = 0.3  # equivalent to 18 req/minute
+if os.environ.get("START_DATE"):
+    START_DATE = dateutil.parser.parse(os.environ["START_DATE"]).astimezone()
+else:
+    START_DATE = datetime.datetime(1990, 1, 1, 0, 0, 0).astimezone(
+        datetime.timezone.utc
+    )  # equivalent to 18 req/minute
+RATE_LIMIT = float(os.environ.get("RATE_LIMIT", 0.3))
 
 ARTIST_COLUMN = "Artist"
 

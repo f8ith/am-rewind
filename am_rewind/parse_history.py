@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import datetime
+import os
 import warnings
 
 import aiohttp
@@ -17,7 +18,9 @@ DATE_COLUMN = "Date Played"
 ALL_COLUMNS = [v for k, v in list(locals().items()) if k.endswith("_COLUMN")]
 
 # Hyper-parameters
-INSUFFICIENT_DURATION_MILLIS = 15000
+INSUFFICIENT_DURATION_MILLIS = int(
+    os.environ.get("INSUFFICIENT_DURATION_MILLIS", 15000)
+)
 DATE_FORMAT = "%Y%m%d"
 START_DATE = datetime.datetime(2024, 1, 1, 0, 0, 0)
 
