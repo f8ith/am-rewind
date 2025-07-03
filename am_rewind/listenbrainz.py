@@ -1,13 +1,15 @@
 import argparse
 import datetime
 from pathlib import Path
-import requests
 import os
 import sys
+from typing import Sequence
 
+import aiohttp
 import dateutil.parser
 import pandas as pd
 
+from am_rewind.throttledclientsession import ThrottledClientSession
 from am_rewind.utils import load_env
 from am_rewind.parse_activity import (
     DATE_COLUMN,
@@ -24,7 +26,12 @@ DEBUG = False
 ROOT = "http://localhost:8100" if DEBUG else "https://api.listenbrainz.org"
 
 
-def submit_listen(listen_type, payload, token):
+async def submit_listen(
+    session: aiohttp.ClientSession,
+    listen_type: str,
+    payload: Sequence[dict],
+    token: str,
+):
     """Submits listens for the track(s) in payload.
 
     Args:
@@ -40,7 +47,7 @@ def submit_listen(listen_type, payload, token):
          A ValueError is the JSON in the response is invalid.
     """
 
-    response = requests.post(
+    response = await session.post(
         url="{0}/1/submit-listens".format(ROOT),
         json={
             "listen_type": listen_type,
@@ -51,10 +58,10 @@ def submit_listen(listen_type, payload, token):
 
     response.raise_for_status()
 
-    return response.json()
+    return await response.json()
 
 
-def submit_payload(args):
+async def submit_payload(args):
     # Parse arguments
 
     if not args.csv_file:
@@ -86,9 +93,12 @@ def submit_payload(args):
     for i in range(num_chunks):
         payload = all_payload[i * 500 : (i + 1) * 500]
         if not args.pretend:
-            json_response = submit_listen(
-                listen_type="import", payload=payload, token=token
-            )
-            print(f"chunk {i}: response was: {json_response}")
+            async with ThrottledClientSession(
+                rate_limit=15
+            ) as session:  # TODO: Configurable
+                json_response = await submit_listen(
+                    session=session, listen_type="import", payload=payload, token=token
+                )
+                print(f"chunk {i}: response was: {json_response}")
         else:
             print(f"submitted: {payload}")
