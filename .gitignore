@@ -215,3 +215,5 @@ __marimo__/
 .get_album_cache
 
 .DS_Store
+
+backups
